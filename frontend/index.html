@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SubstManager v2 — Gestione Sostituzioni</title>
+<link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ SIDEBAR ═══ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <span class="brand">SubstManager</span>
+    <span class="tagline">v2.0 · ITTS A. Cataldo</span>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-label">Principale</div>
+      <button class="nav-item active" onclick="showView('dashboard')"><span class="icon">◈</span> Dashboard</button>
+      <button class="nav-item" onclick="showView('sostituzioni')"><span class="icon">⇄</span> Sostituzioni</button>
+      <button class="nav-item" onclick="showView('settimanale')"><span class="icon">▦</span> Vista Settimanale</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Gestione</div>
+      <button class="nav-item" onclick="showView('docenti')"><span class="icon">◉</span> Docenti</button>
+      <button class="nav-item" onclick="showView('assenze')"><span class="icon">✕</span> Assenze</button>
+      <button class="nav-item" onclick="showView('uscite')"><span class="icon">⊕</span> Uscite Did.</button>
+      <button class="nav-item" onclick="showView('compresenze')"><span class="icon">⟳</span> Compresenze</button>
+      <button class="nav-item" onclick="showView('storico')"><span class="icon">⊙</span> Storico</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Configurazione</div>
+      <button class="nav-item" onclick="showView('priorita')"><span class="icon">≡</span> Priorità Criteri</button>
+      <button class="nav-item" onclick="showView('reportistica')"><span class="icon">⊞</span> Reportistica</button>
+      <button class="nav-item" onclick="showView('impostazioni')"><span class="icon">⚙</span> Impostazioni</button>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="user-avatar">VP</div>
+      <div>
+        <div class="user-name">Prof. Rossi</div>
+        <div class="user-role">Vicepreside</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-sub" id="topbar-sub">Panoramica giornaliera</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="date-nav">
+        <button class="date-btn" onclick="changeDate(-1)">◀</button>
+        <div style="position:relative;display:inline-block">
+          <span class="date-display" id="date-display" onclick="openDatePicker()" title="Clicca per scegliere la data" style="cursor:pointer">—</span>
+          <input type="date" id="date-picker"
+            style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;z-index:1"
+            onchange="setDateFromPicker(this.value)">
+        </div>
+        <button class="date-btn" onclick="changeDate(1)">▶</button>
+      </div>
+      <button class="btn btn-teal" onclick="runEngine()" title="Esegui il motore (mantiene le sostituzioni già confermate)">▶ Motore</button><button class="btn btn-secondary btn-sm" onclick="runEngine(true)" title="Ricalcola da zero tutte le sostituzioni" style="margin-left:4px">↺ Ricalcola</button>
+      <button class="btn btn-primary" onclick="prepareNuovaAssenza()">＋ Assenza</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="view active" id="view-dashboard">
+      <div class="stat-grid">
+        <div class="stat-card blue">
+          <div class="stat-label">Assenze Oggi</div>
+          <div class="stat-value" id="dash-assenze-val">—</div>
+          <div class="stat-sub">docenti assenti</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Coperte</div>
+          <div class="stat-value" id="dash-coperte-val">—</div>
+          <div class="stat-sub" id="dash-perc-sub">—</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-label">In Attesa</div>
+          <div class="stat-value" id="dash-attesa-val">—</div>
+          <div class="stat-sub">richiede intervento</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-label">Compresenze attive</div>
+          <div class="stat-value">P0</div>
+          <div class="stat-sub">criterio prioritario</div>
+        </div>
+      </div>
+
+      <div class="alert alert-warn" id="dash-alert" style="display:none">⚠ Sostituzioni in attesa.</div>
+      <div class="alert alert-teal">⟳ Il criterio P0 COMPRESENZA è attivo: controlla prima dell'orario le compresenze registrate.</div>
+
+      <div class="card">
+        <div class="card-title">📋 Sostituzioni Odierne
+          <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="runEngine()" title="Aggiunge sostituzioni mancanti senza toccare quelle già confermate">▶ Aggiorna</button><button class="btn btn-danger btn-sm" onclick="runEngine(true)" title="Ricalcola tutto da zero" style="margin-left:4px">↺ Ricalcola tutto</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ora</th><th>Classe</th><th>Assente</th><th>Sostituto</th><th>Criterio</th><th>Stato</th><th>Azioni</th></tr></thead>
+            <tbody id="dash-table"><tr><td colspan="7"><div class="loading"><div class="spinner"></div>Caricamento…</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SOSTITUZIONI ═══ -->
+    <div class="view" id="view-sostituzioni">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Gestione Sostituzioni</div>
+          <div class="section-sub">Assegnazione automatica e manuale</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-teal" onclick="runEngine()">▶ Aggiorna sostituzioni</button><button class="btn btn-secondary" onclick="runEngine(true)" style="margin-left:6px">↺ Ricalcola da zero</button>
+          <button class="btn btn-primary" onclick="openModal('assegna')">＋ Assegna Manuale</button>
+        </div>
+      </div>
+      <div class="alert alert-warn" id="sost-alert" style="display:none">⚠ Sostituzioni non coperte.</div>
+      <div class="card">
+        <div class="card-title">📋 Tabella Sostituzioni <span class="badge badge-blue" id="sost-badge" style="margin-left:8px">—</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ora</th><th>Classe</th><th>Assente</th><th>Causa</th><th>Sostituto</th><th>Criterio</th><th>Tipo</th><th>Stato</th><th style="text-align:center" title="Blocca: escludi dal ricalcolo automatico">🔒</th><th>Azioni</th></tr></thead>
+            <tbody id="sost-table"><tr><td colspan="10"><div class="loading"><div class="spinner"></div>Caricamento…</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SETTIMANALE ═══ -->
+    <div class="view" id="view-settimanale">
+      <div class="section-header">
+        <div class="section-title">Vista Settimanale</div>
+      </div>
+      <div class="card">
+        <div class="week-grid">
+          <div class="wg-header" style="background:var(--bg2)"></div>
+          <div class="wg-header">LUN</div><div class="wg-header">MAR</div>
+          <div class="wg-header">MER</div><div class="wg-header" style="color:var(--accent2)">GIO ◀</div>
+          <div class="wg-header">VEN</div>
+          <!-- Ore 1-6 -->
+          <div class="wg-cell time-col">1ª</div>
+          <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+          <div class="wg-cell" style="background:rgba(79,142,247,.04)"><div class="wg-event">3A – Esposito (Bianchi)</div></div>
+          <div class="wg-cell"></div>
+          <div class="wg-cell time-col">2ª</div>
+          <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+          <div class="wg-cell" style="background:rgba(79,142,247,.04)"><div class="wg-event">1C – Ricci (Ferrari)</div></div>
+          <div class="wg-cell"></div>
+          <div class="wg-cell time-col">3ª</div>
+          <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+          <div class="wg-cell" style="background:rgba(79,142,247,.04)"><div class="wg-event conflict">2B – ⚠ non coperta</div></div>
+          <div class="wg-cell"></div>
+          <div class="wg-cell time-col">4ª</div>
+          <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+          <div class="wg-cell" style="background:rgba(79,142,247,.04)"><div class="wg-event compresenza">4D – Greco ⟳ comp.</div></div>
+          <div class="wg-cell"></div>
+          <div class="wg-cell time-col">5ª</div>
+          <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+          <div class="wg-cell" style="background:rgba(79,142,247,.04)"><div class="wg-event manual">5A – Romano (manuale)</div></div>
+          <div class="wg-cell"></div>
+          <div class="wg-cell time-col">6ª</div>
+          <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+          <div class="wg-cell" style="background:rgba(79,142,247,.04)"><div class="wg-event">3B – Fontana</div></div>
+          <div class="wg-cell"></div>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:12px;font-size:.72rem;color:var(--text3)">
+          <span><span style="display:inline-block;width:10px;height:10px;background:rgba(0,212,168,.4);border-radius:2px;margin-right:4px"></span>Compresenza P0</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:rgba(79,142,247,.4);border-radius:2px;margin-right:4px"></span>Automatica</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:rgba(164,127,240,.4);border-radius:2px;margin-right:4px"></span>Manuale</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:rgba(229,83,75,.4);border-radius:2px;margin-right:4px"></span>Non coperta</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ DOCENTI ═══ -->
+    <div class="view" id="view-docenti">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Registro Docenti</div>
+          <div class="section-sub">Anagrafica docenti · Gestione disponibilità e ruoli</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-danger btn-sm" onclick="eliminaTuttiDocenti()" title="Elimina tutti i docenti">🗑 Elimina tutti</button>
+          <button class="btn btn-primary" onclick="apriNuovoDocente()">＋ Docente</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="form-row" style="margin-bottom:0">
+          <div class="form-group">
+            <input type="text" id="search-docente" class="form-input" placeholder="🔍 Cerca per cognome, nome, materia…"
+              oninput="cercaDocente(this.value)">
+          </div>
+          <div class="form-group" style="flex:0;min-width:175px">
+            <select class="form-select" onchange="filtraRuolo(this.value === 'Tutti i ruoli' ? '' : this.value.toLowerCase())">
+              <option>Tutti i ruoli</option>
+              <option value="curriculare">Curriculare</option>
+              <option value="sostegno">Sostegno</option>
+              <option value="potenziamento">Potenziamento</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div id="docenti-list"><div class="loading"><div class="spinner"></div>Caricamento…</div></div>
+    </div>
+
+    <!-- ═══ ASSENZE ═══ -->
+    <div class="view" id="view-assenze">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Registro Assenze</div>
+          <div class="section-sub">Assenze registrate per il giorno selezionato</div>
+        </div>
+        <button class="btn btn-primary" onclick="prepareNuovaAssenza()">＋ Nuova Assenza</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Docente</th><th>Data</th><th>Tipo</th><th>Ore</th><th>Note</th><th>Slot</th><th>Azioni</th></tr></thead>
+            <tbody id="assenze-table"><tr><td colspan="7"><div class="loading"><div class="spinner"></div>Caricamento…</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ USCITE DIDATTICHE ═══ -->
+    <div class="view" id="view-uscite">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Uscite Didattiche</div>
+          <div class="section-sub" id="uscite-sub">Classi in uscita · i docenti interessati diventano disponibili per sostituzioni</div>
+        </div>
+        <button class="btn btn-primary" onclick="apriNuovaUscita()">＋ Registra uscita</button>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:.8rem;color:var(--text3);margin-bottom:10px">
+          📌 Registra qui le classi in uscita didattica per la data selezionata in alto.
+          I docenti di quelle classi diventano automaticamente disponibili come sostituti
+          con priorità elevata (criterio <strong>Uscita Didattica</strong>).
+        </div>
+        <div id="uscite-list"><div class="loading"><div class="spinner"></div>Caricamento…</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ COMPRESENZE ═══ -->
+    <div class="view" id="view-compresenze">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Compresenze da Orario</div>
+          <div class="section-sub">Criterio P0 – massima priorità nel motore decisionale</div>
+        </div>
+      </div>
+      <div class="alert alert-teal">⟳ Il criterio P0 COMPRESENZA cerca automaticamente nell'orario se esiste un secondo docente nello stesso slot classe/ora. Se trovato, ha precedenza assoluta su tutti gli altri criteri.</div>
+      <div class="card">
+        <div class="card-title">⟳ Compresenze Registrate</div>
+        <div id="comp-list"><div class="loading"><div class="spinner"></div>Caricamento…</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ STORICO ═══ -->
+    <div class="view" id="view-storico">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Storico Sostituzioni</div>
+          <div class="section-sub">Log completo con tracciabilità</div>
+        </div>
+        <button class="btn btn-secondary">📥 Esporta CSV</button>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="form-row" style="margin-bottom:0">
+          <div class="form-group"><label class="form-label">Da</label><input type="date" id="storico-da" class="form-input" value="2026-01-01"></div>
+          <div class="form-group"><label class="form-label">A</label><input type="date" id="storico-a" class="form-input"></div>
+          <div class="form-group" style="flex:0;min-width:100px"><label class="form-label">&nbsp;</label>
+            <button class="btn btn-primary" style="width:100%" onclick="loadStorico()">Cerca</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data</th><th>Ora</th><th>Classe</th><th>Assente</th><th>Sostituto</th><th>Criterio</th><th>Stato</th><th>Punteggio</th></tr></thead>
+            <tbody id="storico-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PRIORITÀ ═══ -->
+    <div class="view" id="view-priorita">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Configurazione Criteri di Priorità</div>
+          <div class="section-sub">Trascina per riordinare · Attiva/disattiva · Aggiungi/rimuovi criteri custom</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="openAddCriterio()">＋ Aggiungi Criterio</button>
+          <button class="btn btn-secondary" onclick="resetPriorities()">↺ Ripristina</button>
+          <button class="btn btn-primary" onclick="savePriorities()">💾 Salva</button>
+        </div>
+      </div>
+      <div class="alert alert-teal">⟳ Il criterio <strong>P0 – Compresenza</strong> è fisso in prima posizione e non può essere spostato né disattivato. Legge le compresenze direttamente dall'orario del database.</div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">≡ Ordine di Priorità <span style="font-size:.72rem;color:var(--text3);font-weight:400;font-family:var(--mono)">· trascina per riordinare</span></div>
+          <div class="priority-list" id="priority-list">
+            <div class="loading"><div class="spinner"></div>Caricamento criteri…</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">⚙ Vincoli e Parametri</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div class="form-label" style="margin-bottom:6px">🟣 P5 – Sostegno: condizioni</div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+                <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;cursor:pointer"><input type="checkbox" checked> Abilita se alunno H è assente</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;cursor:pointer"><input type="checkbox" checked> Priorità a classi con alunni BES</label>
+              </div>
+            </div>
+            <div>
+              <div class="form-label" style="margin-bottom:6px">🟠 P6 – Limite ore eccedenti</div>
+              <div class="form-row" style="margin-bottom:0">
+                <div class="form-group"><label class="form-label">Max ore/sett.</label><input type="number" class="form-input" value="6" min="1" max="12"></div>
+                <div class="form-group"><label class="form-label">Soglia avviso</label><input type="number" class="form-input" value="5" min="1" max="12"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ REPORTISTICA ═══ -->
+    <div class="view" id="view-reportistica">
+      <div class="section-header">
+        <div class="section-title">Reportistica</div>
+        <button class="btn btn-secondary">📥 Esporta PDF</button>
+      </div>
+      <div class="stat-grid" style="margin-bottom:16px">
+        <div class="stat-card blue"><div class="stat-label">Tot. sost. a.s.</div><div class="stat-value">312</div></div>
+        <div class="stat-card green"><div class="stat-label">Copertura media</div><div class="stat-value">91%</div></div>
+        <div class="stat-card teal"><div class="stat-label">Compresenze usate</div><div class="stat-value">38</div><div class="stat-sub">criterio P0</div></div>
+        <div class="stat-card yellow"><div class="stat-label">Ore eccedenti</div><div class="stat-value">84h</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">📊 Carico per Docente (top 15)</div>
+          <div id="report-docenti"><div class="loading"><div class="spinner"></div>Caricamento…</div></div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title" style="font-size:.85rem;font-weight:600;color:var(--text2);margin-bottom:14px">
+          ⏱ Ore Eccedenti – Distribuzione docenti disponibili
+        </div>
+        <div id="report-ore-eccedenti"><div class="loading"><div class="spinner"></div>Caricamento…</div></div>
+      </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🎯 Distribuzione per Criterio</div>
+          <div class="bar-chart">
+            <div class="bar-row"><div class="bar-label">P0 – Compresenza</div><div class="bar-track"><div class="bar-fill" style="width:12%;background:var(--teal)"></div></div><div class="bar-val">38 (12%)</div></div>
+            <div class="bar-row"><div class="bar-label">P1 – Ore disp.</div><div class="bar-track"><div class="bar-fill" style="width:38%;background:var(--green)"></div></div><div class="bar-val">119 (38%)</div></div>
+            <div class="bar-row"><div class="bar-label">P2 – Rec. perm.</div><div class="bar-track"><div class="bar-fill" style="width:22%;background:var(--accent)"></div></div><div class="bar-val">69 (22%)</div></div>
+            <div class="bar-row"><div class="bar-label">P3 – Classe/plesso</div><div class="bar-track"><div class="bar-fill" style="width:14%;background:var(--yellow)"></div></div><div class="bar-val">44 (14%)</div></div>
+            <div class="bar-row"><div class="bar-label">P4 – Stessa classe</div><div class="bar-track"><div class="bar-fill" style="width:8%;background:var(--purple)"></div></div><div class="bar-val">25 (8%)</div></div>
+            <div class="bar-row"><div class="bar-label">P5–6 – altri</div><div class="bar-track"><div class="bar-fill" style="width:6%;background:var(--orange)"></div></div><div class="bar-val">17 (6%)</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ IMPOSTAZIONI ═══ -->
+    <div class="view" id="view-impostazioni">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Impostazioni Sistema</div>
+          <div class="section-sub">Configurazione istituto, orario e notifiche</div>
+        </div>
+        <button class="btn btn-primary" onclick="saveImpostazioni()">💾 Salva Tutto</button>
+      </div>
+      <div class="two-col">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-title">🏫 Dati Istituto</div>
+            <div class="form-group" style="margin-bottom:10px"><label class="form-label">Nome istituto</label><input type="text" id="imp-nome" class="form-input" value="ITTS A. Cataldo – Ferrara"></div>
+            <div class="form-group" style="margin-bottom:10px"><label class="form-label">Anno scolastico</label><input type="text" id="imp-anno" class="form-input" value="2025/2026"></div>
+            <div class="form-group" style="margin-bottom:10px"><label class="form-label">Città</label><input type="text" id="imp-citta" class="form-input" value="Lamezia Terme"></div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Dirigente</label><input type="text" id="imp-dirigente" class="form-input"></div>
+              <div class="form-group"><label class="form-label">Vicepreside</label><input type="text" id="imp-vicepreside" class="form-input"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">🕐 Orario</div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Ore/giorno</label><input type="number" id="imp-ore-gg" class="form-input" value="6" min="1" max="8"></div>
+              <div class="form-group"><label class="form-label">Giorni/sett.</label><input type="number" id="imp-giorni" class="form-input" value="5" min="5" max="6"></div>
+              <div class="form-group"><label class="form-label">Max ore ecc.</label><input type="number" id="imp-max-ecc" class="form-input" value="6" min="1" max="12"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">🖥 Sistema</div>
+            <div class="form-group"><label class="form-label">Porta server</label><input type="number" id="imp-porta" class="form-input" value="8080"></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-title">🔔 Notifiche</div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <label style="display:flex;align-items:center;justify-content:space-between;font-size:.83rem">
+                Avviso sostituzioni non coperte <div class="toggle on" id="tog-non-coperte" onclick="this.classList.toggle('on')"></div>
+              </label>
+              <label style="display:flex;align-items:center;justify-content:space-between;font-size:.83rem">
+                Email giornaliera sostituzioni <div class="toggle" id="tog-email-gg" onclick="this.classList.toggle('on')"></div>
+              </label>
+              <label style="display:flex;align-items:center;justify-content:space-between;font-size:.83rem">
+                Avviso limite ore eccedenti <div class="toggle on" id="tog-limite-ore" onclick="this.classList.toggle('on')"></div>
+              </label>
+              <label style="display:flex;align-items:center;justify-content:space-between;font-size:.83rem">
+                Report settimanale automatico <div class="toggle" id="tog-report-sett" onclick="this.classList.toggle('on')"></div>
+              </label>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">📤 Importa Orario</div>
+            <div style="border:2px dashed var(--border2);border-radius:9px;padding:20px;text-align:center;color:var(--text3);font-size:.82rem;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+              <div style="font-size:2rem;margin-bottom:8px">📁</div>
+              <div>Trascina qui il file orario (CSV, Excel, XML)</div>
+              <div style="font-size:.72rem;margin-top:4px;color:var(--text3)">Formati: Argo, Axios, SOAS, CSV generico</div>
+              <button class="btn btn-secondary btn-sm" style="margin-top:10px">Sfoglia file</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ═══ MODAL: NUOVA ASSENZA ═══ -->
+<div class="modal-overlay" id="modal-nuova-assenza">
+  <div class="modal">
+    <div class="modal-title">
+      <span>＋ Registra Nuova Assenza</span>
+      <button class="modal-close" onclick="closeModal('nuova-assenza')">✕</button>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Docente assente</label>
+      <select class="form-select" id="nuova-assenza-docente"><option value="0">Caricamento…</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" class="form-input" id="nuova-assenza-data">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo assenza</label>
+        <select class="form-select" id="nuova-assenza-tipo">
+          <option value="malattia">Malattia</option>
+          <option value="permesso">Permesso breve</option>
+          <option value="ferie">Ferie</option>
+          <option value="aggiornamento">Aggiornamento</option>
+          <option value="altro">Altro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Ore coinvolte</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer"><input type="checkbox" class="ore-check" value="1"> 1ª</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer"><input type="checkbox" class="ore-check" value="2"> 2ª</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer"><input type="checkbox" class="ore-check" value="3"> 3ª</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer"><input type="checkbox" class="ore-check" value="4"> 4ª</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer"><input type="checkbox" class="ore-check" value="5"> 5ª</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer"><input type="checkbox" class="ore-check" value="6"> 6ª</label>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">Note</label>
+      <input type="text" class="form-input" id="nuova-assenza-note" placeholder="Certificato medico, protocollo, ecc.">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('nuova-assenza')">Annulla</button>
+      <button class="btn btn-primary" onclick="registraAssenza()">Registra e genera sostituzioni</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: ASSEGNA MANUALE ═══ -->
+<div class="modal-overlay" id="modal-assegna">
+  <div class="modal" style="width:460px">
+    <div class="modal-title">
+      <span id="assegna-titolo">👤 Assegnazione Manuale</span>
+      <button class="modal-close" onclick="closeModal('assegna')">✕</button>
+    </div>
+    <div class="alert alert-warn" style="font-size:.82rem">
+      ⚠ La sostituzione manuale viene bloccata e non sarà sovrascritta dal motore automatico.
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Docente sostituto</label>
+      <select class="form-select" id="assegna-docente">
+        <option value="">Seleziona docente…</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">Nota / Motivazione</label>
+      <input type="text" id="assegna-nota" class="form-input" placeholder="es. disponibilità telefonica, richiesta classe…">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('assegna')">Annulla</button>
+      <button class="btn btn-primary" onclick="confermaAssegnaManuale()">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: DETTAGLIO SOSTITUZIONE ═══ -->
+<div class="modal-overlay" id="modal-dettaglio">
+  <div class="modal" style="width:420px">
+    <div class="modal-title">
+      <span>Dettaglio Sostituzione</span>
+      <button class="modal-close" onclick="closeModal('dettaglio')">✕</button>
+    </div>
+    <div id="dettaglio-content" style="font-size:.88rem;line-height:1.7"></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="dettaglio-btn-annulla" onclick="annullaDaDettaglio()" title="Rimuove il sostituto e riporta lo slot in attesa">Rimuovi</button>
+      <button class="btn btn-primary btn-sm" id="dettaglio-btn-modifica" style="display:none" title="Assegna un altro docente manualmente">✏ Modifica</button>
+      <button class="btn btn-secondary" onclick="closeModal('dettaglio')">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: AGGIUNGI CRITERIO ═══ -->
+<div class="modal-overlay" id="modal-add-criterio">
+  <div class="modal">
+    <div class="modal-title">
+      <span>＋ Aggiungi Criterio Custom</span>
+      <button class="modal-close" onclick="closeModal('add-criterio')">✕</button>
+    </div>
+    <div class="alert alert-info">I criteri custom vengono applicati dopo quelli built-in. Il criterio P0 Compresenza è sempre in cima.</div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Nome criterio *</label>
+      <input type="text" class="form-input" id="nc-nome" placeholder="es. Stessa materia stesso plesso">
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Descrizione</label>
+      <input type="text" class="form-input" id="nc-desc" placeholder="Breve descrizione del criterio…">
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">Colore badge</label>
+      <input type="color" id="nc-colore" value="#888888" style="height:36px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;width:100%">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-criterio')">Annulla</button>
+      <button class="btn btn-primary" onclick="saveNewCriterio()">Aggiungi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: NUOVO DOCENTE ═══ -->
+<div class="modal-overlay" id="modal-nuovo-docente">
+  <div class="modal">
+    <div class="modal-title">
+      <span>＋ Aggiungi Docente</span>
+      <button class="modal-close" onclick="closeModal('nuovo-docente')">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Cognome *</label>
+        <input type="text" id="nd-cognome" class="form-input" placeholder="es. Rossi">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nome</label>
+        <input type="text" id="nd-nome" class="form-input" placeholder="es. Mario">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Materia / Disciplina</label>
+        <input type="text" id="nd-materia" class="form-input" placeholder="es. Informatica">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ruolo</label>
+        <select class="form-select" id="nd-ruolo">
+          <option value="curriculare">Curriculare</option>
+          <option value="sostegno">Sostegno H</option>
+          <option value="potenziamento">Potenziamento / Organico autonomia</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Plesso</label>
+        <select class="form-select" id="nd-plesso">
+          <option value="1">Sede Centrale</option>
+          <option value="2">Plesso B</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ore cattedra</label>
+        <input type="number" id="nd-ore" class="form-input" value="18" min="1" max="24">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Note</label>
+      <input type="text" id="nd-note" class="form-input" placeholder="Opzionale…">
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;font-size:.83rem;padding:10px 0;border-top:1px solid var(--border)">
+      Disponibile per ore eccedenti
+      <div class="toggle" id="nd-disp-ecc" onclick="this.classList.toggle('on')"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('nuovo-docente')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaDocente()">Aggiungi Docente</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ MODAL: EDIT SLOT ORARIO ═══ -->
+<div class="modal-overlay" id="modal-edit-slot">
+  <div class="modal" style="width:440px">
+    <div class="modal-title">
+      <span id="es-titolo">Modifica Slot Orario</span>
+      <button class="modal-close" onclick="closeModal('edit-slot')">✕</button>
+    </div>
+
+    <!-- Info compresenza esistente -->
+    <div id="es-comp-info" style="display:none;align-items:center;gap:8px;
+         background:rgba(0,212,168,.08);border:1px solid rgba(0,212,168,.25);
+         border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:.82rem;color:var(--text2)">
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Tipo</label>
+      <select class="form-select" id="es-tipo">
+        <option value="lezione">Lezione</option>
+        <option value="disposizione">Ora a disposizione / Organico Autonomia</option>
+        <option value="potenziamento">Potenziamento</option>
+        <option value="sostegno">Sostegno H</option>
+        <option value="libero">— Libero (rimuovi slot) —</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Classe</label>
+      <select class="form-select" id="es-classe">
+        <option value="">— Nessuna classe —</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Materia / Descrizione</label>
+      <input type="text" id="es-materia" class="form-input" placeholder="es. Informatica, Tecnologia Grafica…">
+    </div>
+
+    <!-- Suggerimento compresenza automatica -->
+    <div id="es-comp-suggest" style="display:none;align-items:center;gap:8px;
+         background:rgba(0,212,168,.06);border:1px dashed rgba(0,212,168,.35);
+         border-radius:6px;padding:8px 12px;margin-bottom:4px;color:var(--text2)">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="es-btn-elimina" onclick="eliminaSlot()" style="margin-right:auto">Rimuovi</button>
+      <button class="btn btn-secondary" onclick="closeModal('edit-slot')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaSlot()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: NUOVA USCITA DIDATTICA ═══ -->
+<div class="modal-overlay" id="modal-nuova-uscita">
+  <div class="modal" style="width:400px">
+    <div class="modal-title">
+      <span>⊕ Registra Uscita Didattica</span>
+      <button class="modal-close" onclick="closeModal('nuova-uscita')">✕</button>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Classe</label>
+      <select class="form-select" id="uscita-classe">
+        <option value="">Seleziona classe…</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Ore interessate dall'uscita</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer" title="1ª ora">
+          <input type="checkbox" class="uscita-ora-chk" value="1" checked> 1ª
+        </label>
+        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+          <input type="checkbox" class="uscita-ora-chk" value="2" checked> 2ª
+        </label>
+        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+          <input type="checkbox" class="uscita-ora-chk" value="3" checked> 3ª
+        </label>
+        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+          <input type="checkbox" class="uscita-ora-chk" value="4" checked> 4ª
+        </label>
+        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+          <input type="checkbox" class="uscita-ora-chk" value="5" checked> 5ª
+        </label>
+        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+          <input type="checkbox" class="uscita-ora-chk" value="6" checked> 6ª
+        </label>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">Nota (opzionale)</label>
+      <input type="text" id="uscita-note" class="form-input" placeholder="es. Museo Civico, Teatro Politeama…">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('nuova-uscita')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaUscita()">Registra</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCRIPTS ═══ -->
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/azioni.js"></script>
+<script src="/js/uscite.js"></script>
+<script src="/js/dashboard.js"></script>
+<script src="/js/sostituzioni.js"></script>
+<script src="/js/assenze.js"></script>
+<script src="/js/docenti.js"></script>
+<script src="/js/compresenze.js"></script>
+<script src="/js/storico.js"></script>
+<script src="/js/priorita.js"></script>
+<script src="/js/reportistica.js"></script>
+<script src="/js/impostazioni.js"></script>
+<script>
+  // Init
+  document.querySelectorAll('#date-display').forEach(el => { el.textContent = formatDateIT(currentDate); });
+  const stoA = document.getElementById('storico-a');
+  if (stoA) stoA.value = isoDate(currentDate);
+  showView('dashboard');
+</script>
+</body>
+</html>

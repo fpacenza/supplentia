@@ -1,0 +1,139 @@
+{
+  "scuola": {
+    "nome": "ITTS E. Scalfaro – Catanzaro",
+    "anno_scolastico": "2025/2026",
+    "citta": "Catanzaro",
+    "codice_meccanografico": "CZTF010008",
+    "dirigente": "Dott. Sanzo Vito",
+    "vicepreside": "Prof. Galasso Cinzia"
+  },
+  "orario": {
+    "ore_giornaliere": 6,
+    "giorni_settimana": 6,
+    "ora_inizio": "08:00",
+    "durata_ora_min": 60,
+    "pausa_dopo_ora": 3,
+    "pausa_durata_min": 10
+  },
+  "engine": {
+    "max_ore_eccedenti_settimana": 6,
+    "soglia_avviso_ore_eccedenti": 5,
+    "preferenza_stessa_disciplina": true,
+    "blocca_manuali": true,
+    "log_motivazioni": true
+  },
+  "notifiche": {
+    "avviso_non_coperte": true,
+    "email_giornaliera": false,
+    "avviso_limite_ore": true,
+    "report_settimanale": false,
+    "email_destinatario": ""
+  },
+  "sistema": {
+    "porta": 8080,
+    "debug": false,
+    "versione": "2.0.0"
+  },
+  "criteri": [
+    {
+      "id": "compresenza",
+      "nome": "Compresenza da orario",
+      "descrizione": "Docente in compresenza nello stesso slot classe/ora secondo l'orario ufficiale",
+      "attivo": true,
+      "priorita": 1,
+      "rimuovibile": false,
+      "colore": "#00d4a8",
+      "parametri": {}
+    },
+    {
+      "id": "anticipo",
+      "nome": "Anticipo dell'ora successiva",
+      "descrizione": "Il docente dell'ora successiva anticipa la sua lezione. La classe esce un'ora prima.",
+      "attivo": true,
+      "priorita": 2,
+      "rimuovibile": false,
+      "colore": "#00d4a8",
+      "parametri": {}
+    },
+    {
+      "id": "rec_permessi",
+      "nome": "Recupero permessi brevi",
+      "descrizione": "Docenti con ore di permesso da recuperare precedentemente fruite",
+      "attivo": true,
+      "priorita": 3,
+      "rimuovibile": false,
+      "colore": "#4f8ef7",
+      "parametri": {}
+    },
+    {
+      "id": "entrata_uscita",
+      "nome": "Entrata ritardata / Uscita anticipata",
+      "descrizione": "Se l'ora scoperta è la prima o l'ultima della giornata (ora di testa/coda), la classe entra tardi o esce prima. Le ore di mezzo vengono sempre coperte da sostituzione.",
+      "attivo": true,
+      "priorita": 4,
+      "rimuovibile": false,
+      "colore": "#00d4a8",
+      "parametri": {}
+    },
+    {
+      "id": "ore_disp",
+      "nome": "Ore a disposizione (Organico Autonomia)",
+      "descrizione": "Docenti con ore di potenziamento o libere nel piano settimanale",
+      "attivo": true,
+      "priorita": 5,
+      "rimuovibile": false,
+      "colore": "#2ec27e",
+      "parametri": {
+        "preferenza_stessa_disciplina": true
+      }
+    },
+    {
+      "id": "uscita_didattica",
+      "nome": "Classe in Uscita Didattica",
+      "descrizione": "Il docente è libero perché la sua classe è in uscita didattica. Disponibile per sostituzioni solo nelle ore dell'uscita.",
+      "attivo": true,
+      "priorita": 6,
+      "rimuovibile": false,
+      "colore": "#e8924a",
+      "parametri": {}
+    },
+    {
+      "id": "stessa_classe",
+      "nome": "Stessa classe / stesso plesso",
+      "descrizione": "Docenti già assegnati alla classe o liberi nello stesso plesso",
+      "attivo": true,
+      "priorita": 7,
+      "rimuovibile": false,
+      "colore": "#f0c040",
+      "parametri": {}
+    },
+    {
+      "id": "sostegno",
+      "nome": "Docenti di sostegno (condizionato)",
+      "descrizione": "Solo se alunno con disabilità è assente o per classi con alunni BES",
+      "attivo": false,
+      "priorita": 8,
+      "rimuovibile": false,
+      "colore": "#a47ff0",
+      "parametri": {
+        "abilita_se_alunno_h_assente": true,
+        "priorita_classi_bes": true,
+        "abilita_sempre": false
+      }
+    },
+    {
+      "id": "ore_eccedenti",
+      "nome": "Ore eccedenti (disponibilità volontaria)",
+      "descrizione": "Docenti con disponibilità dichiarata, nel rispetto del limite ore",
+      "attivo": false,
+      "priorita": 9,
+      "rimuovibile": false,
+      "colore": "#e8924a",
+      "parametri": {
+        "max_ore_settimana": 6,
+        "soglia_avviso": 5
+      }
+    }
+  ],
+  "criteri_custom": []
+}
