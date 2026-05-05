@@ -1,4 +1,4 @@
-/* SubstManager v2 – Sostituzioni */
+/* Supplentia v2 – Sostituzioni */
 
 async function loadSostituzioni() {
   const data = isoDate(currentDate);

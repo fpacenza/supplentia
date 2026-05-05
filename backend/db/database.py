@@ -1,5 +1,5 @@
 """
-SubstManager · Database Layer
+Supplentia · Database Layer
 Gestione connessione SQLite e inizializzazione schema
 """
 
@@ -11,7 +11,7 @@ from typing import Generator
 # ── PERCORSI ──────────────────────────────────────────────────
 BASE_DIR   = Path(__file__).resolve().parent.parent.parent
 DATA_DIR   = BASE_DIR / "data"
-DB_PATH    = DATA_DIR / "substmanager.db"
+DB_PATH    = DATA_DIR / "supplentia.db"
 SCHEMA_SQL = DATA_DIR / "schema.sql"
 
 

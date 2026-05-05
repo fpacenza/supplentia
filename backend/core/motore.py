@@ -1,5 +1,5 @@
 """
-SubstManager · Motore di Assegnazione Sostituzioni
+Supplentia · Motore di Assegnazione Sostituzioni
 Implementa i criteri di priorità configurabili:
 
   P0 (built-in) COMPRESENZA    — docente in compresenza nell'ora

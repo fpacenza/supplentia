@@ -1,4 +1,4 @@
-/* SubstManager v2 – Impostazioni */
+/* Supplentia v2 – Impostazioni */
 async function loadImpostazioni() {
   try {
     const cfg = await API.get('/api/config');

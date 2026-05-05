@@ -1,4 +1,4 @@
-/* SubstManager v2 – Uscite Didattiche */
+/* Supplentia v2 – Uscite Didattiche */
 
 let _usciteOggi = [];
 let _classiCache = [];

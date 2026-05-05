@@ -1,4 +1,4 @@
-/* SubstManager v2 – Assenze */
+/* Supplentia v2 – Assenze */
 
 let _docentiCache = [];
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SubstManager v2 – Server HTTP
+Supplentia v2 – Server HTTP
 Puro stdlib Python, zero dipendenze pip.
 Serve l'API REST e il frontend statico.
 """
@@ -20,7 +20,7 @@ sys.path.insert(0, BASE_DIR)
 from backend.engine.motore import run_engine
 
 CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
-DB_PATH     = os.path.join(BASE_DIR, 'data', 'substmanager.db')
+DB_PATH     = os.path.join(BASE_DIR, 'data', 'supplentia.db')
 FRONTEND    = os.path.join(BASE_DIR, 'frontend')
 
 # ─────────────────────────── MIME ───────────────────────────
@@ -867,7 +867,7 @@ if __name__ == '__main__':
 
     print(f"""
 ╔══════════════════════════════════════════════╗
-║         SubstManager v2.0  –  avvio          ║
+║         Supplentia v2.0  –  avvio          ║
 ║  Database : {DB_PATH[-35:]:35s}  ║
 ║  Frontend : http://localhost:{porta:<5d}             ║
 ╚══════════════════════════════════════════════╝

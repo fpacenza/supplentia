@@ -1,4 +1,4 @@
-/* SubstManager v2 – Priorità criteri (con add/remove custom) */
+/* Supplentia v2 – Priorità criteri (con add/remove custom) */
 
 let _criteriState = [];
 

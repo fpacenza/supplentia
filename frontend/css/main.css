@@ -1,4 +1,4 @@
-/* SubstManager v2 – Design System */
+/* Supplentia v2 – Design System */
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300&family=DM+Sans:wght@300;400;500;600&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--border:#2a3348;--border2:#3a4a66;--accent:#4f8ef7;--accent2:#7bb3ff;--green:#2ec27e;--teal:#00d4a8;--yellow:#f0c040;--red:#e5534b;--orange:#e8924a;--purple:#a47ff0;--text:#e2e8f4;--text2:#8fa3c8;--text3:#5a6e90;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--serif:'Fraunces',serif;--radius:10px;--radius-lg:16px;--shadow:0 4px 24px rgba(0,0,0,.45)}

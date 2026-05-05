@@ -1,4 +1,4 @@
-/* SubstManager v2 – Compresenze */
+/* Supplentia v2 – Compresenze */
 const GIORNI_LABELS = ['','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì'];
 
 async function loadCompresenze() {

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SubstManager v2 - Inizializzazione Database
+Supplentia v2 - Inizializzazione Database
 Crea il database SQLite con schema completo e dati demo.
 """
 
@@ -9,7 +9,7 @@ import os
 import sys
 from datetime import date, timedelta
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'substmanager.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'supplentia.db')
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;

@@ -1,5 +1,5 @@
-# SubstManager v2.0
-## Gestionale Sostituzioni Docenti – ITTS A. Cataldo Ferrara
+# Supplentia v2.0
+## Gestionale Sostituzioni Docenti – ITTS E. Scalfaro Catanzaro
 
 ### Avvio rapido
 ```bash
@@ -14,11 +14,11 @@ bash start.sh --reset
 
 ### Struttura
 ```
-substmanager/
+supplentia/
 ├── config.json           ← configurazione (nome scuola, orario, criteri...)
 ├── start.sh              ← script di avvio
 ├── data/
-│   └── substmanager.db   ← database SQLite (generato automaticamente)
+│   └── supplentia.db   ← database SQLite (generato automaticamente)
 ├── scripts/
 │   ├── init_db.py        ← inizializza schema + dati demo
 │   └── server.py         ← server HTTP stdlib Python (no pip)

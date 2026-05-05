@@ -1,4 +1,4 @@
-/* SubstManager v2 – API wrapper */
+/* Supplentia v2 – API wrapper */
 const BASE = '';
 const API = {
   async get(path) {

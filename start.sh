@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# SubstManager v2 – Script di Avvio
+# Supplentia v2 – Script di Avvio
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
-echo "║        SubstManager v2.0  – Avvio        ║"
+echo "║        Supplentia v2.0  – Avvio        ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
@@ -19,8 +19,8 @@ PYTHON=$(command -v python3)
 echo "✓ Python: $($PYTHON --version)"
 mkdir -p data
 
-if [ ! -f "data/substmanager.db" ] || [ "$1" == "--reset" ]; then
-  [ "$1" == "--reset" ] && rm -f data/substmanager.db
+if [ ! -f "data/supplentia.db" ] || [ "$1" == "--reset" ]; then
+  [ "$1" == "--reset" ] && rm -f data/supplentia.db
 #  echo "📦 Inizializzazione database…"
 #  $PYTHON scripts/init_db.py
 #  echo ""

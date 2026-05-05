@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SubstManager v2 – Motore Decisionale
+Supplentia v2 – Motore Decisionale
 
 Criteri configurabili dall'interfaccia (possono essere abilitati/disabilitati e riordinati):
   compresenza    → P0: secondo docente della compresenza (fisso, non disabilitabile)

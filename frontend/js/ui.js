@@ -1,4 +1,4 @@
-/* SubstManager v2 – UI helpers */
+/* Supplentia v2 – UI helpers */
 
 // ─── STATE ───
 let currentDate = new Date();

@@ -1,4 +1,4 @@
-"""SubstManager · API Assenze"""
+"""Supplentia · API Assenze"""
 
 import json
 from fastapi import APIRouter, Depends, HTTPException

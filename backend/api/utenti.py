@@ -1,4 +1,4 @@
-"""SubstManager · API Utenti"""
+"""Supplentia · API Utenti"""
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional

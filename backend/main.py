@@ -1,6 +1,6 @@
 """
-SubstManager · Backend FastAPI
-Gestionale Sostituzioni Docenti — ITTS A. Cataldo
+Supplentia · Backend FastAPI
+Gestionale Sostituzioni Docenti
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -26,16 +26,16 @@ from api import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Inizializzazione al avvio."""
-    print("🚀 SubstManager avviato — inizializzazione database...")
+    print("🚀 Supplentia avviato — inizializzazione database...")
     init_db()
     print("✅ Database pronto.")
     yield
-    print("👋 SubstManager arrestato.")
+    print("👋 Supplentia arrestato.")
 
 
 app = FastAPI(
-    title="SubstManager API",
-    description="Gestionale Sostituzioni Docenti — ITTS A. Cataldo",
+    title="Supplentia API",
+    description="Gestionale Sostituzioni Docenti",
     version="1.0.0",
     lifespan=lifespan,
 )

@@ -1,4 +1,4 @@
-/* SubstManager v2 – Reportistica */
+/* Supplentia v2 – Reportistica */
 async function loadReportistica() {
   const container = document.getElementById('report-docenti');
   if (!container) return;

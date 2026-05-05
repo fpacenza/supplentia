@@ -1,1 +1,1 @@
-# SubstManager backend package
+# Supplentia backend package
