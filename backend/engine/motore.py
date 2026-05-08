@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Supplentia v2 – Motore Decisionale
+Supplentia – Motore Decisionale
 
 Criteri configurabili dall'interfaccia (possono essere abilitati/disabilitati e riordinati):
   compresenza    → P0: secondo docente della compresenza (fisso, non disabilitabile)
@@ -429,6 +429,20 @@ def run_engine(conn: sqlite3.Connection, data: str, config: dict, forza_ricalcol
             if not slot: continue
             classe_id = slot[0]
             if not classe_id: continue
+
+            # Se la classe è in uscita didattica in quell'ora → nessuna sostituzione necessaria
+            # (la classe non è fisicamente a scuola, non serve un sostituto)
+            try:
+                uscita_classe = conn.execute(
+                    "SELECT ore_json FROM uscite_didattiche WHERE data=? AND classe_id=?",
+                    (data, classe_id)
+                ).fetchone()
+                if uscita_classe:
+                    ore_uscita_cl = json.loads(uscita_classe[0]) if uscita_classe[0] else list(range(1,7))
+                    if ora in ore_uscita_cl:
+                        continue   # la classe è in gita → nessuna sostituzione
+            except Exception:
+                pass
 
             # Già bloccata manualmente?
             if conn.execute("SELECT 1 FROM sostituzioni WHERE assenza_id=? AND ora=? AND bloccata=1",

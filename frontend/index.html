@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SubstManager v2 — Gestione Sostituzioni</title>
+<title>Supplentia — Gestione Sostituzioni</title>
 <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <span class="brand">Supplentia</span>
-<!--    <span class="tagline">v2.0 · ITTS E. Scalfaro</span> -->
+    <span class="tagline"><span id="school-name-nav">Supplentia</span></span>
   </div>
   <div class="sidebar-nav">
     <div class="nav-section">
@@ -35,14 +35,15 @@
       <button class="nav-item" onclick="showView('priorita')"><span class="icon">≡</span> Priorità Criteri</button>
       <button class="nav-item" onclick="showView('reportistica')"><span class="icon">⊞</span> Reportistica</button>
       <button class="nav-item" onclick="showView('impostazioni')"><span class="icon">⚙</span> Impostazioni</button>
+      <button class="nav-item" id="nav-utenti" style="display:none" onclick="showView('utenti')"><span class="icon">👥</span> Utenti</button>
     </div>
   </div>
   <div class="sidebar-footer">
-    <div class="user-chip">
-      <div class="user-avatar">VP</div>
-      <div>
-        <div class="user-name">Prof. Rossi</div>
-        <div class="user-role">Vicepreside</div>
+    <div class="user-chip" onclick="apriProfilo()" title="Modifica profilo e password" style="cursor:pointer">
+      <div class="user-avatar" id="sidebar-avatar" style="font-size:.8rem">?</div>
+      <div style="overflow:hidden">
+        <div class="user-name" id="sidebar-nome" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">…</div>
+        <div class="user-role" id="sidebar-perm" style="font-size:.68rem;color:var(--text3)"></div>
       </div>
     </div>
   </div>
@@ -65,6 +66,11 @@
             onchange="setDateFromPicker(this.value)">
         </div>
         <button class="date-btn" onclick="changeDate(1)">▶</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+        <span id="topbar-utente" style="font-size:.78rem;color:var(--text3);cursor:pointer"
+              onclick="openModal('cambio-pwd')" title="Clicca per cambiare password"></span>
+        <button class="btn btn-secondary btn-sm" onclick="doLogout()" title="Esci">⏻ Esci</button>
       </div>
       <button class="btn btn-teal" onclick="runEngine()" title="Esegui il motore (mantiene le sostituzioni già confermate)">▶ Motore</button><button class="btn btn-secondary btn-sm" onclick="runEngine(true)" title="Ricalcola da zero tutte le sostituzioni" style="margin-left:4px">↺ Ricalcola</button>
       <button class="btn btn-primary" onclick="prepareNuovaAssenza()">＋ Assenza</button>
@@ -391,7 +397,7 @@
         <div style="display:flex;flex-direction:column;gap:14px">
           <div class="card">
             <div class="card-title">🏫 Dati Istituto</div>
-            <div class="form-group" style="margin-bottom:10px"><label class="form-label">Nome istituto</label><input type="text" id="imp-nome" class="form-input" value="ITTS E. Scalfaro – Catanzaro"></div>
+            <div class="form-group" style="margin-bottom:10px"><label class="form-label">Nome istituto</label><input type="text" id="imp-nome" class="form-input" value="ITTS A. Cataldo – Ferrara"></div>
             <div class="form-group" style="margin-bottom:10px"><label class="form-label">Anno scolastico</label><input type="text" id="imp-anno" class="form-input" value="2025/2026"></div>
             <div class="form-group" style="margin-bottom:10px"><label class="form-label">Città</label><input type="text" id="imp-citta" class="form-input" value="Lamezia Terme"></div>
             <div class="form-row">
@@ -443,8 +449,27 @@
       </div>
     </div>
 
+
+    <!-- ═══ UTENTI ═══ -->
+    <div class="view" id="view-utenti">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Gestione Utenti</div>
+          <div class="section-sub">Crea, modifica e rimuovi account del sistema</div>
+        </div>
+        <button class="btn btn-primary" onclick="apriNuovoUtente()">＋ Nuovo utente</button>
+      </div>
+      <div class="card">
+        <div id="utenti-list"><div class="loading"><div class="spinner"></div>Caricamento…</div></div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
+
+
+      <!-- Gestione Utenti (solo admin) -->
+      
 </div><!-- /app -->
 
 <!-- ═══ MODAL: NUOVA ASSENZA ═══ -->
@@ -677,7 +702,7 @@
 
 <!-- ═══ MODAL: NUOVA USCITA DIDATTICA ═══ -->
 <div class="modal-overlay" id="modal-nuova-uscita">
-  <div class="modal" style="width:400px">
+  <div class="modal" style="width:440px">
     <div class="modal-title">
       <span>⊕ Registra Uscita Didattica</span>
       <button class="modal-close" onclick="closeModal('nuova-uscita')">✕</button>
@@ -688,27 +713,42 @@
         <option value="">Seleziona classe…</option>
       </select>
     </div>
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <div class="form-group" style="flex:1;margin-bottom:0">
+        <label class="form-label">Data inizio</label>
+        <input type="date" id="uscita-data-inizio" class="form-input"
+               onchange="syncDataFine()">
+      </div>
+      <div class="form-group" style="flex:1;margin-bottom:0">
+        <label class="form-label">Data fine <span style="color:var(--text3);font-weight:400">(= inizio se uguale)</span></label>
+        <input type="date" id="uscita-data-fine" class="form-input" onchange="_aggiornaBtnUscita()">
+      </div>
+    </div>
     <div class="form-group" style="margin-bottom:12px">
-      <label class="form-label">Ore interessate dall'uscita</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer" title="1ª ora">
+      <label class="form-label">Ore interessate</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:4px;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;font-size:.82rem">
           <input type="checkbox" class="uscita-ora-chk" value="1" checked> 1ª
         </label>
-        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:4px;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;font-size:.82rem">
           <input type="checkbox" class="uscita-ora-chk" value="2" checked> 2ª
         </label>
-        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:4px;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;font-size:.82rem">
           <input type="checkbox" class="uscita-ora-chk" value="3" checked> 3ª
         </label>
-        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:4px;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;font-size:.82rem">
           <input type="checkbox" class="uscita-ora-chk" value="4" checked> 4ª
         </label>
-        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:4px;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;font-size:.82rem">
           <input type="checkbox" class="uscita-ora-chk" value="5" checked> 5ª
         </label>
-        <label class="blocca-label" style="gap:4px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:4px;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;font-size:.82rem">
           <input type="checkbox" class="uscita-ora-chk" value="6" checked> 6ª
         </label>
+      </div>
+      <div style="margin-top:6px;display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.uscita-ora-chk').forEach(c=>c.checked=true)">Tutte</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.uscita-ora-chk').forEach(c=>c.checked=false)">Nessuna</button>
       </div>
     </div>
     <div class="form-group" style="margin-bottom:0">
@@ -717,16 +757,121 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('nuova-uscita')">Annulla</button>
-      <button class="btn btn-primary" onclick="salvaUscita()">Registra</button>
+      <button class="btn btn-primary" id="btn-salva-uscita" onclick="salvaUscita()">Registra</button>
     </div>
   </div>
 </div>
+
+<!-- ═══ MODAL: NUOVO UTENTE ═══ -->
+<div class="modal-overlay" id="modal-nuovo-utente">
+  <div class="modal" style="width:420px">
+    <div class="modal-title">
+      <span id="nu-titolo">👤 Nuovo Utente</span>
+      <button class="modal-close" onclick="closeModal('nuovo-utente')">✕</button>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Username</label>
+      <input type="text" id="nu-username" class="form-input" placeholder="es. mrossi" autocomplete="off">
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Nome completo</label>
+      <input type="text" id="nu-nome" class="form-input" placeholder="es. Mario Rossi">
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Permessi</label>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <label style="flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px;
+               border:2px solid var(--border2);border-radius:8px;cursor:pointer;transition:border-color .15s"
+               id="perm-lettura-label">
+          <input type="radio" name="nu-ruolo" value="lettura" id="nu-perm-lettura" style="margin-top:2px">
+          <div>
+            <div style="font-weight:600;font-size:.85rem">👁 Solo lettura</div>
+            <div style="font-size:.75rem;color:var(--text3);margin-top:2px">Visualizza sostituzioni e statistiche.<br>Non può modificare nulla.</div>
+          </div>
+        </label>
+        <label style="flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px;
+               border:2px solid var(--border2);border-radius:8px;cursor:pointer;transition:border-color .15s"
+               id="perm-scrittura-label">
+          <input type="radio" name="nu-ruolo" value="scrittura" id="nu-perm-scrittura" style="margin-top:2px" checked>
+          <div>
+            <div style="font-weight:600;font-size:.85rem">✏ Lettura + Scrittura</div>
+            <div style="font-size:.75rem;color:var(--text3);margin-top:2px">Gestisce assenze, sostituzioni e uscite.<br>Non può gestire utenti.</div>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">Password <span style="color:var(--text3);font-weight:400;font-size:.78rem">(lascia vuoto = username)</span></label>
+      <input type="password" id="nu-password" class="form-input" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('nuovo-utente')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaUtente()">Crea utente</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ MODAL: CAMBIO PASSWORD ═══ -->
+<div class="modal-overlay" id="modal-cambio-pwd">
+  <div class="modal" style="width:360px">
+    <div class="modal-title">
+      <span>🔑 Cambia Password</span>
+      <button class="modal-close" onclick="closeModal('cambio-pwd')">✕</button>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Nuova password</label>
+      <input type="password" id="cp-nuova" class="form-input" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">Conferma password</label>
+      <input type="password" id="cp-conferma" class="form-input" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('cambio-pwd')">Annulla</button>
+      <button class="btn btn-primary" onclick="confermaCambioPassword()">Salva</button>
+    </div>
+  </div>
+</div>
+<!-- ═══ MODAL: PROFILO UTENTE ═══ -->
+<div class="modal-overlay" id="modal-profilo">
+  <div class="modal" style="width:400px">
+    <div class="modal-title">
+      <span>👤 Il tuo profilo</span>
+      <button class="modal-close" onclick="closeModal('profilo')">✕</button>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Nome visualizzato</label>
+      <input type="text" id="prf-nome" class="form-input" placeholder="Il tuo nome">
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+      <div style="font-size:.78rem;font-weight:600;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Cambia password</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">Nuova password <span style="color:var(--text3);font-weight:400">(lascia vuoto per non cambiare)</span></label>
+        <input type="password" id="prf-pwd" class="form-input" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Conferma password</label>
+        <input type="password" id="prf-pwd2" class="form-input" placeholder="••••••••" autocomplete="new-password">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('profilo')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaProfilo()">Salva</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
 
 <!-- ═══ SCRIPTS ═══ -->
 <script src="/js/api.js"></script>
 <script src="/js/ui.js"></script>
 <script src="/js/azioni.js"></script>
-<script src="/js/uscite.js"></script>
 <script src="/js/dashboard.js"></script>
 <script src="/js/sostituzioni.js"></script>
 <script src="/js/assenze.js"></script>
@@ -735,13 +880,17 @@
 <script src="/js/storico.js"></script>
 <script src="/js/priorita.js"></script>
 <script src="/js/reportistica.js"></script>
+<script src="/js/uscite.js"></script>
 <script src="/js/impostazioni.js"></script>
+
 <script>
   // Init
   document.querySelectorAll('#date-display').forEach(el => { el.textContent = formatDateIT(currentDate); });
   const stoA = document.getElementById('storico-a');
   if (stoA) stoA.value = isoDate(currentDate);
   showView('dashboard');
+  // Carica info utente per sidebar e permessi menu
+  initUtente();
 </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-/* Supplentia v2 – Dashboard */
+/* Supplentia – Dashboard */
 
 async function loadDashboard() {
   const data = isoDate(currentDate);

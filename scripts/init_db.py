@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Supplentia v2 - Inizializzazione Database
+Supplentia - Inizializzazione Database
 Crea il database SQLite con schema completo e dati demo.
 """
 
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS uscite_didattiche (
     data        TEXT NOT NULL,           -- data dell'uscita (ISO: YYYY-MM-DD)
     classe_id   INTEGER NOT NULL REFERENCES classi(id),
     ore_json    TEXT NOT NULL DEFAULT '[1,2,3,4,5,6]',  -- ore interessate
-    note        TEXT DEFAULT '',
+    note        TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS compresenze (
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS assenze (
     data        TEXT NOT NULL,         -- ISO date YYYY-MM-DD
     tipo        TEXT NOT NULL,         -- malattia|permesso|ferie|aggiornamento|altro
     ore_json    TEXT NOT NULL,         -- JSON array es. [1,2,3]
-    note        TEXT,
+    note        TEXT
 );
 
 CREATE TABLE IF NOT EXISTS permessi_recupero (
@@ -144,12 +144,21 @@ CREATE TABLE IF NOT EXISTS log_operazioni (
 );
 
 CREATE TABLE IF NOT EXISTS utenti (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    username    TEXT UNIQUE NOT NULL,
-    nome        TEXT NOT NULL,
-    ruolo       TEXT DEFAULT 'operatore', -- dirigente|vicepreside|operatore|segreteria
-    email       TEXT,
-    attivo      INTEGER DEFAULT 1
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT UNIQUE NOT NULL,
+    nome          TEXT NOT NULL,
+    ruolo         TEXT DEFAULT 'operatore', -- admin|dirigente|vicepreside|operatore|segreteria
+    email         TEXT,
+    attivo        INTEGER DEFAULT 1,
+    password_hash TEXT
+);
+
+CREATE TABLE IF NOT EXISTS sessioni (
+    token       TEXT PRIMARY KEY,
+    utente_id   INTEGER NOT NULL REFERENCES utenti(id),
+    creata_il   TEXT DEFAULT (datetime('now')),
+    scade_il    TEXT,
+    ip          TEXT
 );
 
 -- ─────────────────────────── INDICI ───────────────────────────
@@ -167,11 +176,12 @@ INSERT OR IGNORE INTO plessi (id, nome, indirizzo) VALUES
   (1, 'Sede Centrale', 'Lamezia Terme'),
   (2, 'Plesso B',      'Lamezia Terme');
 
--- ─── UTENTI di sistema ───
-INSERT OR IGNORE INTO utenti (id, username, nome, ruolo, email) VALUES
-  (1, 'vicepreside', 'Vicepreside',  'vicepreside', ''),
-  (2, 'dirigente',   'Dirigente',    'dirigente',   ''),
-  (3, 'segreteria',  'Segreteria',   'segreteria',  '');
+-- ─── UTENTI di sistema (password = username di default, da cambiare) ───
+INSERT OR IGNORE INTO utenti (id, username, nome, ruolo, password_hash) VALUES
+  (0, 'admin',       'Amministratore', 'admin',       '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'),
+  (1, 'vicepreside', 'Vicepreside',    'vicepreside', 'd0a495c8483679990f95c713066940472c5356679a88c140003a03bac0cbd7f5'),
+  (2, 'dirigente',   'Dirigente',      'dirigente',   '81f151b196e1657cf66ed8750c6631d768f761477c7c94eaa9cca83a047a34c1'),
+  (3, 'segreteria',  'Segreteria',     'segreteria',  'bf629c9d8a2c2369aad28d9bb563c66f3370cc70cf7a4a72f6ddd39f17fbf227');
 """
 
 

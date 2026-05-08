@@ -1,4 +1,4 @@
-"""Supplentia · API Reportistica"""
+"""SubstManager · API Reportistica"""
 
 from fastapi import APIRouter, Depends
 from typing import Optional

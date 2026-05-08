@@ -1,4 +1,4 @@
-"""Supplentia · API Orario e Compresenze"""
+"""SubstManager · API Orario e Compresenze"""
 
 import json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File

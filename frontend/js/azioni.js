@@ -1,4 +1,4 @@
-/* Supplentia v2 – Azioni sostituzioni: assegna manuale + dettaglio */
+/* Supplentia – Azioni sostituzioni: assegna manuale + dettaglio */
 
 let _assegnaCtx = null;  // { sostId, classeNome, ora }
 let _dettaglioCtx = null; // { sostId }

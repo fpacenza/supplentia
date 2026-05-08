@@ -1,4 +1,4 @@
-/* Supplentia v2 – Docenti con griglia orario e compresenze */
+/* Supplentia – Docenti con griglia orario e compresenze */
 
 let _allDocenti    = [];
 let _allClassi     = [];

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Supplentia v2 – Importa Orario da PDF Classi
+Supplentia – Importa Orario da PDF Classi
 Usa pdfplumber – nessun tool esterno necessario.
 
 Uso:
@@ -504,13 +504,13 @@ def importa_docenti(db_path, slots_docenti):
 # ─────────────────────────── MAIN ───────────────────────────
 
 def main():
-    ap = argparse.ArgumentParser(description='Supplentia v2 – Importa Orario da PDF')
+    ap = argparse.ArgumentParser(description='Supplentia – Importa Orario da PDF')
     ap.add_argument('--classi',  required=True,  help='PDF orario per classe (timbro_CLASSI_*.pdf)')
     ap.add_argument('--docenti', required=False, help='PDF orario per docente (orario_DOCENTI.pdf)')
     ap.add_argument('--db', default=DB_PATH)
     args = ap.parse_args()
 
-    print(f"\n📄 Supplentia v2 – Importazione Orario")
+    print(f"\n📄 Supplentia – Importazione Orario")
     print(f"{'─'*54}")
 
     # Passaggio 1: PDF classi

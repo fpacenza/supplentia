@@ -1,4 +1,4 @@
-/* Supplentia v2 – Priorità criteri (con add/remove custom) */
+/* Supplentia – Priorità criteri (con add/remove custom) */
 
 let _criteriState = [];
 

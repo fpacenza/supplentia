@@ -1,4 +1,4 @@
-/* Supplentia v2 – Sostituzioni */
+/* Supplentia – Sostituzioni */
 
 async function loadSostituzioni() {
   const data = isoDate(currentDate);

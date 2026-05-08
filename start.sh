@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Supplentia v2 – Script di Avvio
+# Supplentia – Script di Avvio
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
-echo "║        Supplentia v2.0  – Avvio        ║"
+echo "║        Supplentia  – Avvio        ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
@@ -21,9 +21,9 @@ mkdir -p data
 
 if [ ! -f "data/supplentia.db" ] || [ "$1" == "--reset" ]; then
   [ "$1" == "--reset" ] && rm -f data/supplentia.db
-#  echo "📦 Inizializzazione database…"
-#  $PYTHON scripts/init_db.py
-#  echo ""
+  echo "📦 Inizializzazione database…"
+  $PYTHON scripts/init_db.py
+  echo ""
 fi
 
 PORTA=$(python3 -c "

@@ -1,4 +1,4 @@
-/* Supplentia v2 – Storico */
+/* Supplentia – Storico */
 async function loadStorico() {
   const tbody = document.getElementById('storico-table');
   if (!tbody) return;

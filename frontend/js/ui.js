@@ -1,4 +1,4 @@
-/* Supplentia v2 – UI helpers */
+/* Supplentia – UI helpers */
 
 // ─── STATE ───
 let currentDate = new Date();
@@ -80,6 +80,56 @@ const viewMeta = {
 
 let currentView = 'dashboard';  // traccia la vista corrente
 
+// ─── INIT UTENTE (chiamata all'avvio) ───────────────────────────────────────
+async function initUtente() {
+  try {
+    const [utente, scuola] = await Promise.all([
+      fetch('/api/me', { credentials:'include', headers: _authHeaders() }).then(r => r.ok ? r.json() : null),
+      fetch('/api/config/scuola', { credentials:'include', headers: _authHeaders() }).then(r => r.ok ? r.json() : {})
+    ]);
+
+    if (!utente || !utente.nome) return;  // non autenticato → il server reindirizza
+
+    // Topbar (nome utente senza ruolo)
+    const topbar = document.getElementById('topbar-utente');
+    if (topbar) topbar.textContent = utente.nome;
+
+    // Sidebar footer: avatar, nome, livello permesso
+    const initials = utente.nome.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+    const avatarEl = document.getElementById('sidebar-avatar');
+    const nomeEl   = document.getElementById('sidebar-nome');
+    const permEl   = document.getElementById('sidebar-perm');
+    if (avatarEl) avatarEl.textContent = initials;
+    if (nomeEl)   nomeEl.textContent   = utente.nome;
+    const permLabel = {
+      admin:       'Amministratore',
+      scrittura:   'Lettura + Scrittura',
+      lettura:     'Solo lettura',
+      vicepreside: 'Lettura + Scrittura',
+      operatore:   'Lettura + Scrittura',
+      segreteria:  'Solo lettura',
+      dirigente:   'Solo lettura'
+    };
+    if (permEl) permEl.textContent = permLabel[utente.ruolo] || utente.ruolo;
+
+    // Nome scuola nella topbar/sidebar
+    if (scuola && scuola.nome) {
+      const el = document.getElementById('school-name-nav');
+      if (el) el.textContent = scuola.nome;
+    }
+
+    // Mostra voce "Utenti" nel menu SOLO agli admin
+    if (utente.ruolo === 'admin') {
+      const navU = document.getElementById('nav-utenti');
+      if (navU) navU.style.display = '';  // rimuove display:none
+    }
+
+  } catch(e) {
+    console.warn('initUtente:', e);
+  }
+}
+
+
 function showView(id) {
   currentView = id;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -98,7 +148,8 @@ function showView(id) {
     docenti: loadDocenti, assenze: loadAssenze,
     compresenze: loadCompresenze, storico: loadStorico,
     priorita: loadPriorita, reportistica: loadReportistica,
-    uscite: loadUscite,
+    uscite:        loadUscite,
+    utenti:        loadUtenti,
     impostazioni: loadImpostazioni
   };
   if (loaders[id]) loaders[id]();
@@ -214,4 +265,55 @@ document.addEventListener('dragend', () => {
 });
 function updatePriorityNumbers() {
   document.querySelectorAll('#priority-list .priority-num').forEach((el,i) => el.textContent = i+1);
+}
+
+async function doLogout() {
+  try {
+    await fetch('/api/logout', { method:'POST', credentials:'include', headers: _authHeaders() });
+  } catch(_) {}
+  localStorage.removeItem('sm_token');
+  window.location.href = '/login';
+}
+
+async function salvaProfilo() {
+  const nome  = document.getElementById('prf-nome')?.value?.trim();
+  const pwd   = document.getElementById('prf-pwd')?.value;
+  const pwd2  = document.getElementById('prf-pwd2')?.value;
+
+  if (pwd && pwd !== pwd2) { showToast('Le password non coincidono', 'error'); return; }
+  if (pwd && pwd.length < 4) { showToast('Password troppo corta (min 4 caratteri)', 'error'); return; }
+
+  try {
+    const me = await API.get('/api/me');
+    const aggiornamenti = {};
+    if (nome) aggiornamenti.nome = nome;
+    if (pwd)  aggiornamenti.password = pwd;
+    if (Object.keys(aggiornamenti).length === 0) {
+      closeModal('profilo'); return;
+    }
+    await API.put(`/api/utenti/${me.id}`, aggiornamenti);
+    closeModal('profilo');
+    showToast('✓ Profilo aggiornato', 'success');
+    // Aggiorna nome nella sidebar
+    if (nome) {
+      const nomeEl = document.getElementById('sidebar-nome');
+      if (nomeEl) nomeEl.textContent = nome;
+      const initials = nome.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+      const av = document.getElementById('sidebar-avatar');
+      if (av) av.textContent = initials;
+      const tb = document.getElementById('topbar-utente');
+      if (tb) tb.textContent = nome;
+    }
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function apriProfilo() {
+  try {
+    const me = await API.get('/api/me');
+    const nomeEl = document.getElementById('prf-nome');
+    if (nomeEl) nomeEl.value = me.nome || '';
+    document.getElementById('prf-pwd').value = '';
+    document.getElementById('prf-pwd2').value = '';
+    openModal('profilo');
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
 }

@@ -1,5 +1,5 @@
 """
-Supplentia · API Criteri di Priorità
+SubstManager · API Criteri di Priorità
 Lettura, creazione, modifica, cancellazione e riordino dei criteri.
 """
 

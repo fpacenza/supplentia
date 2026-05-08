@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Supplentia v2 – Server HTTP
+Supplentia – Server HTTP
 Puro stdlib Python, zero dipendenze pip.
 Serve l'API REST e il frontend statico.
 """
 
+import hashlib
 import json
 import os
+import secrets
 import sqlite3
 import sys
 from datetime import date
@@ -41,20 +43,88 @@ def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
-    # ── Migration automatica: crea tabelle aggiunte in versioni successive ──
-    conn.execute("""CREATE TABLE IF NOT EXISTS uscite_didattiche (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        data        TEXT NOT NULL,
-        classe_id   INTEGER NOT NULL REFERENCES classi(id),
-        ore_json    TEXT NOT NULL DEFAULT '[1,2,3,4,5,6]',
-        note        TEXT DEFAULT ''
-    )""")
+    # ── Migration automatica: eseguita solo se il DB è già inizializzato ──
+    tabelle = {r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    ).fetchall()}
+
+    if 'utenti' in tabelle:
+        # Aggiunge colonne mancanti agli utenti
+        cols = {r[1] for r in conn.execute('PRAGMA table_info(utenti)').fetchall()}
+        if 'password_hash' not in cols:
+            conn.execute('ALTER TABLE utenti ADD COLUMN password_hash TEXT')
+
+    if 'uscite_didattiche' not in tabelle:
+        conn.execute("""CREATE TABLE IF NOT EXISTS uscite_didattiche (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            data TEXT NOT NULL, data_fine TEXT,
+            classe_id INTEGER NOT NULL REFERENCES classi(id),
+            ore_json TEXT NOT NULL DEFAULT '[1,2,3,4,5,6]', note TEXT DEFAULT '')""")
+    else:
+        # Migration: aggiunge data_fine se manca
+        ud_cols = {r[1] for r in conn.execute('PRAGMA table_info(uscite_didattiche)').fetchall()}
+        if 'data_fine' not in ud_cols:
+            conn.execute('ALTER TABLE uscite_didattiche ADD COLUMN data_fine TEXT')
+            conn.execute('UPDATE uscite_didattiche SET data_fine = data WHERE data_fine IS NULL')
+
+    if 'sessioni' not in tabelle and 'utenti' in tabelle:
+        conn.execute("""CREATE TABLE IF NOT EXISTS sessioni (
+            token TEXT PRIMARY KEY, utente_id INTEGER NOT NULL REFERENCES utenti(id),
+            creata_il TEXT DEFAULT (datetime('now')), scade_il TEXT, ip TEXT)""")
+
     conn.commit()
     return conn
 
 def load_config():
     with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+# ─────────────────────────── AUTH ───────────────────────────
+
+def hash_pwd(pwd: str) -> str:
+    return hashlib.sha256(pwd.encode()).hexdigest()
+
+def get_session(conn, token: str):
+    """Restituisce l'utente della sessione o None."""
+    if not token:
+        return None
+    row = conn.execute(
+        """SELECT u.id, u.username, u.nome, u.ruolo
+           FROM sessioni s JOIN utenti u ON u.id=s.utente_id
+           WHERE s.token=? AND u.attivo=1""",
+        (token,)
+    ).fetchone()
+    return dict(row) if row else None
+
+def get_token_from_request(headers: dict) -> str:
+    """Estrae il token dal cookie o dall'header Authorization."""
+    cookie = headers.get('Cookie', '')
+    for part in cookie.split(';'):
+        part = part.strip()
+        if part.startswith('sm_token='):
+            return part[9:]
+    auth = headers.get('Authorization', '')
+    if auth.startswith('Bearer '):
+        return auth[7:]
+    return ''
+
+# Ruoli: admin > scrittura > lettura
+# 'admin'     → tutto + gestione utenti
+# 'scrittura' → modifica sostituzioni, assenze, uscite (ex vicepreside/operatore)
+# 'lettura'   → solo visualizzazione (ex segreteria/dirigente)
+# Retrocompatibilità: i vecchi ruoli sono mappati ai nuovi
+RUOLI_LETTURA   = {'admin','scrittura','lettura','vicepreside','operatore','segreteria','dirigente'}
+RUOLI_SCRITTURA = {'admin','scrittura','vicepreside','operatore'}
+RUOLI_ADMIN     = {'admin'}
+
+def is_public_path(path: str, method: str) -> bool:
+    """Path che non richiedono autenticazione."""
+    if path in ('/login', '/api/login', '/api/config/scuola'):
+        return True
+    if method == 'GET' and (path.startswith('/css/') or path.startswith('/js/')
+                            or path.startswith('/img/') or path in ('/', '/index.html')):
+        return True
+    return False
 
 def save_config(cfg):
     with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
@@ -100,8 +170,29 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
-        path   = parsed.path.rstrip('/')
+        path   = parsed.path.rstrip('/') or '/'
         qs     = parse_qs(parsed.query)
+
+        # ── Controlla autenticazione ──
+        if not is_public_path(path, 'GET'):
+            token   = get_token_from_request(dict(self.headers))
+            conn_a  = get_conn()
+            utente  = get_session(conn_a, token)
+            conn_a.close()
+            if not utente:
+                if path.startswith('/api/'):
+                    self.send_response(401); self.send_header('Content-Type','application/json')
+                    self.end_headers(); self.wfile.write(b'{"errore":"Non autenticato"}')
+                else:
+                    self.send_response(302)
+                    self.send_header('Location', '/login')
+                    self.end_headers()
+                return
+
+        # Servi login.html
+        if path == '/login':
+            self.serve_static('/login.html')
+            return
 
         # ── API ──
         if path.startswith('/api'):
@@ -140,6 +231,21 @@ class Handler(BaseHTTPRequestHandler):
                     (data,)
                 ).fetchall()
                 self.send_json(rows_to_list(rows))
+
+            elif path == '/api/me':
+                token_me = get_token_from_request(dict(self.headers))
+                utente_me = get_session(conn, token_me)
+                self.send_json(utente_me or {})
+
+            elif path == '/api/config/scuola':
+                cfg_s = load_config()
+                self.send_json(cfg_s.get('scuola', {}))
+
+            elif path == '/api/utenti':
+                rows_u2 = conn.execute(
+                    "SELECT id, username, nome, ruolo, email, attivo FROM utenti ORDER BY ruolo, nome"
+                ).fetchall()
+                self.send_json(rows_to_list(rows_u2))
 
             elif path == '/api/docenti':
                 rows = conn.execute(
@@ -235,12 +341,15 @@ class Handler(BaseHTTPRequestHandler):
 
             elif path == '/api/uscite':
                 data_u = qs.get('data', [date.today().isoformat()])[0]
+                # Restituisce uscite che coprono questa data:
+                # data_inizio <= data_u <= data_fine (o data_fine IS NULL e data = data_u)
                 rows_u = conn.execute(
-                    """SELECT u.id, u.data, u.classe_id, c.nome AS classe_nome,
+                    """SELECT u.id, u.data, u.data_fine, u.classe_id, c.nome AS classe_nome,
                               u.ore_json, u.note
                        FROM uscite_didattiche u JOIN classi c ON c.id=u.classe_id
-                       WHERE u.data=? ORDER BY c.nome""",
-                    (data_u,)
+                       WHERE u.data <= ? AND (u.data_fine IS NULL OR u.data_fine >= ?)
+                       ORDER BY c.nome""",
+                    (data_u, data_u)
                 ).fetchall()
                 result_u = rows_to_list(rows_u)
                 for r in result_u:
@@ -385,7 +494,68 @@ class Handler(BaseHTTPRequestHandler):
         try:
             body = self.read_body()
 
-            if path == '/api/engine/run':
+            if path == '/api/login':
+                username = body.get('username','').strip().lower()
+                password = body.get('password','')
+                utente_row = conn.execute(
+                    "SELECT id, username, nome, ruolo, attivo FROM utenti WHERE username=? AND password_hash=?",
+                    (username, hash_pwd(password))
+                ).fetchone()
+                if not utente_row or not utente_row['attivo']:
+                    self.send_error_json('Credenziali non valide', 401)
+                    return
+                token = secrets.token_hex(32)
+                conn.execute(
+                    "INSERT INTO sessioni (token, utente_id, ip) VALUES (?,?,?)",
+                    (token, utente_row['id'], self.client_address[0])
+                )
+                conn.commit()
+                utente_dict = dict(utente_row)
+                utente_dict.pop('attivo', None)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Set-Cookie',
+                    f'sm_token={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400')
+                self.end_headers()
+                self.wfile.write(json.dumps({'ok': True, 'utente': utente_dict, 'token': token}).encode())
+                return
+
+            elif path == '/api/logout':
+                token_lo = get_token_from_request(dict(self.headers))
+                if token_lo:
+                    conn.execute("DELETE FROM sessioni WHERE token=?", (token_lo,))
+                    conn.commit()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Set-Cookie', 'sm_token=; Path=/; Max-Age=0')
+                self.end_headers()
+                self.wfile.write(b'{"ok":true}')
+                return
+
+            elif path == '/api/utenti' and body.get('_action') == 'create':
+                # Crea nuovo utente (solo admin)
+                token_cr = get_token_from_request(dict(self.headers))
+                ut = get_session(conn, token_cr)
+                if not ut or ut['ruolo'] not in RUOLI_ADMIN:
+                    self.send_error_json('Non autorizzato', 403); return
+                uname = body.get('username','').strip().lower()
+                if not uname:
+                    self.send_error_json('Username obbligatorio', 400); return
+                pwd   = body.get('password', uname)  # default pwd = username
+                r_new = conn.execute(
+                    "INSERT INTO utenti (username, nome, ruolo, email, password_hash) VALUES (?,?,?,?,?)",
+                    (uname, body.get('nome', uname), body.get('ruolo','operatore'),
+                     body.get('email',''), hash_pwd(pwd))
+                )
+                conn.commit()
+                self.send_json({'id': r_new.lastrowid, 'ok': True}, 201)
+
+            elif path == '/api/engine/run':
+                # Richiede permesso scrittura
+                tok_w = get_token_from_request(dict(self.headers))
+                ut_w  = get_session(conn, tok_w)
+                if not ut_w or ut_w['ruolo'] not in RUOLI_SCRITTURA:
+                    self.send_error_json('Permesso insufficiente', 403); return
                 data = body.get('data', date.today().isoformat())
                 forza = bool(body.get('forza_ricalcolo', False))
                 cfg  = load_config()
@@ -545,32 +715,58 @@ class Handler(BaseHTTPRequestHandler):
                 }, 200 if ex else 201)
 
             elif path == '/api/uscite':
-                # Registra uscita didattica per una classe in una data
-                classe_id_u = int(body['classe_id'])
-                data_u      = body['data']
-                ore_u       = body.get('ore', [1,2,3,4,5,6])
-                note_u      = body.get('note', '')
-                import json as _json
-                ore_json_u  = _json.dumps(sorted(ore_u)) if isinstance(ore_u, list) else ore_u
-                # Evita duplicati
-                ex_u = conn.execute(
-                    "SELECT id FROM uscite_didattiche WHERE data=? AND classe_id=?",
-                    (data_u, classe_id_u)
-                ).fetchone()
-                if ex_u:
-                    conn.execute(
-                        "UPDATE uscite_didattiche SET ore_json=?, note=? WHERE id=?",
-                        (ore_json_u, note_u, ex_u[0])
-                    )
-                    conn.commit()
-                    self.send_json({'id': ex_u[0], 'ok': True, 'updated': True})
-                else:
-                    r_u = conn.execute(
-                        "INSERT INTO uscite_didattiche (data, classe_id, ore_json, note) VALUES (?,?,?,?)",
-                        (data_u, classe_id_u, ore_json_u, note_u)
-                    )
-                    conn.commit()
-                    self.send_json({'id': r_u.lastrowid, 'ok': True}, 201)
+                # Registra uscita didattica per una classe con range di date
+                classe_id_u  = int(body['classe_id'])
+                data_inizio  = body['data']
+                data_fine_u  = body.get('data_fine') or data_inizio  # default = solo quel giorno
+                ore_u        = body.get('ore', [1,2,3,4,5,6])
+                note_u       = body.get('note', '')
+                ore_json_u   = json.dumps(sorted(ore_u)) if isinstance(ore_u, list) else ore_u
+
+                # Inserisce una riga per ogni giorno del range
+                # (più semplice per il motore che interroga per data singola)
+                from datetime import timedelta
+                d_start = date.fromisoformat(data_inizio)
+                d_end   = date.fromisoformat(data_fine_u)
+                if d_end < d_start:
+                    d_end = d_start
+
+                ids_inseriti = []
+                date_ricalcolo = set()
+
+                # Elimina eventuali uscite precedenti per questa classe nel range
+                conn.execute(
+                    "DELETE FROM uscite_didattiche WHERE classe_id=? AND data >= ? AND data <= ?",
+                    (classe_id_u, data_inizio, data_fine_u)
+                )
+
+                # Inserisce una riga per ogni giorno lavorativo del range
+                d = d_start
+                while d <= d_end:
+                    if d.isoweekday() <= 6:  # lun-sab (no domenica)
+                        r_u = conn.execute(
+                            "INSERT INTO uscite_didattiche (data, data_fine, classe_id, ore_json, note) VALUES (?,?,?,?,?)",
+                            (d.isoformat(), data_fine_u, classe_id_u, ore_json_u, note_u)
+                        )
+                        ids_inseriti.append(r_u.lastrowid)
+                        date_ricalcolo.add(d.isoformat())
+                    d += timedelta(days=1)
+
+                conn.commit()
+
+                # Ricalcolo FORZATO da zero per ogni data del range con assenze
+                cfg_u = load_config()
+                for data_r in sorted(date_ricalcolo):
+                    ha_assenze = conn.execute(
+                        "SELECT 1 FROM assenze WHERE data=?", (data_r,)
+                    ).fetchone()
+                    if ha_assenze:
+                        try:
+                            run_engine(conn, data_r, cfg_u, forza_ricalcolo=True)
+                        except Exception:
+                            pass
+
+                self.send_json({'ok': True, 'giorni': len(ids_inseriti), 'ids': ids_inseriti})
 
             elif path == '/api/docenti':
                 # Crea nuovo docente
@@ -640,6 +836,32 @@ class Handler(BaseHTTPRequestHandler):
                 cfg['criteri'] = [c for c in criteri_in if c['id'] in builtin_ids]
                 cfg['criteri_custom'] = [c for c in criteri_in if c['id'] not in builtin_ids]
                 save_config(cfg)
+                self.send_json({'ok': True})
+
+            elif path.startswith('/api/utenti/'):
+                uid_u = path.split('/')[-1]
+                token_pu = get_token_from_request(dict(self.headers))
+                ut_pu = get_session(conn, token_pu)
+                if not ut_pu:
+                    self.send_error_json('Non autenticato', 401); return
+                # Admin può modificare tutti; gli altri solo se stessi
+                is_self = str(ut_pu['id']) == str(uid_u)
+                if not is_self and ut_pu['ruolo'] not in RUOLI_ADMIN:
+                    self.send_error_json('Non autorizzato', 403); return
+                # Non-admin possono modificare solo nome e password (non il ruolo)
+                if not is_self or (is_self and ut_pu['ruolo'] not in RUOLI_ADMIN):
+                    # Rimuovi campi privilegiati se non sei admin
+                    for k in ['ruolo', 'attivo']:
+                        body.pop(k, None)
+                allowed_u = {'nome', 'ruolo', 'email', 'attivo'}
+                updates_u = {k: v for k, v in body.items() if k in allowed_u}
+                if 'password' in body and body['password']:
+                    updates_u['password_hash'] = hash_pwd(body['password'])
+                if updates_u:
+                    sets_u = ', '.join(f"{k}=?" for k in updates_u)
+                    conn.execute(f"UPDATE utenti SET {sets_u} WHERE id=?",
+                                 list(updates_u.values()) + [uid_u])
+                    conn.commit()
                 self.send_json({'ok': True})
 
             elif path.startswith('/api/sostituzioni/'):
@@ -765,8 +987,77 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({'ok': True, 'ricalcolato': ricalcolato})
 
             elif path.startswith('/api/uscite/'):
-                uid = path.split('/')[-1]
-                conn.execute("DELETE FROM uscite_didattiche WHERE id=?", (uid,))
+                uid_us = path.split('/')[-1]
+                # Leggi dati dell'uscita prima di cancellarla
+                uscita_row = conn.execute(
+                    "SELECT u.data, u.data_fine, u.classe_id, u.ore_json FROM uscite_didattiche u WHERE u.id=?",
+                    (uid_us,)
+                ).fetchone()
+                conn.execute("DELETE FROM uscite_didattiche WHERE id=?", (uid_us,))
+                conn.commit()
+                # Ricalcola: i docenti che erano in quell'uscita tornano occupati dalla loro lezione
+                # → invalida le sostituzioni in cui compaiono come sostituti in quelle ore
+                if uscita_row:
+                    import json as _j
+                    data_usc = uscita_row[0]
+                    classe_usc = uscita_row[1]
+                    try:
+                        ore_usc = _j.loads(uscita_row[2]) if uscita_row[2] else list(range(1,7))
+                    except Exception:
+                        ore_usc = list(range(1,7))
+                    giorno_usc = date.fromisoformat(data_usc).isoweekday()
+                    # Trova i docenti che tornavano in classe (avevano lezione in quella classe/ore)
+                    doc_tornati = {r[0] for r in conn.execute(
+                        f"SELECT docente_id FROM orario_docenti WHERE classe_id=? AND giorno=? AND ora IN ({','.join('?'*len(ore_usc))})",
+                        [classe_usc, giorno_usc] + list(ore_usc)
+                    ).fetchall()}
+                    # Invalida le loro sostituzioni in quelle ore
+                    for doc_id in doc_tornati:
+                        for ora_usc in ore_usc:
+                            sost_inv = conn.execute(
+                                "SELECT id FROM sostituzioni WHERE data=? AND ora=? AND docente_sostituto_id=? AND bloccata=0",
+                                (data_usc, ora_usc, doc_id)
+                            ).fetchall()
+                            for sv in sost_inv:
+                                conn.execute("DELETE FROM ore_eccedenti WHERE sostituzione_id=?", (sv[0],))
+                                conn.execute(
+                                    "UPDATE sostituzioni SET stato='attesa', docente_sostituto_id=NULL, "
+                                    "tipo='auto', criterio_id=NULL, punteggio=0, "
+                                    "motivazione='Docente rientrato da uscita didattica' WHERE id=?",
+                                    (sv[0],)
+                                )
+                    conn.commit()
+                    # Riesegui il motore per ricoprire gli slot in attesa
+                    # Ricalcolo FORZATO per tutte le date del range
+                    from datetime import timedelta as _td
+                    data_fine_usc = uscita_row[1] if uscita_row[1] else data_usc
+                    try:
+                        d = date.fromisoformat(data_usc)
+                        d_end = date.fromisoformat(data_fine_usc)
+                    except Exception:
+                        d = d_end = date.fromisoformat(data_usc)
+                    cfg_u = load_config()
+                    while d <= d_end:
+                        if d.isoweekday() <= 6:
+                            ha_assenze = conn.execute(
+                                "SELECT 1 FROM assenze WHERE data=?", (d.isoformat(),)
+                            ).fetchone()
+                            if ha_assenze:
+                                try:
+                                    run_engine(conn, d.isoformat(), cfg_u, forza_ricalcolo=True)
+                                except Exception:
+                                    pass
+                        d += _td(days=1)
+                self.send_json({'ok': True})
+
+            elif path.startswith('/api/utenti/'):
+                uid_del = path.split('/')[-1]
+                token_du = get_token_from_request(dict(self.headers))
+                ut_du = get_session(conn, token_du)
+                if not ut_du or ut_du['ruolo'] not in RUOLI_ADMIN:
+                    self.send_error_json('Non autorizzato', 403); return
+                conn.execute("DELETE FROM sessioni WHERE utente_id=?", (uid_del,))
+                conn.execute("DELETE FROM utenti WHERE id=?", (uid_del,))
                 conn.commit()
                 self.send_json({'ok': True})
 
@@ -851,6 +1142,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', mime)
         self.send_header('Content-Length', len(data))
+        # Disabilita cache per JS e HTML (forza ricaricamento dopo aggiornamenti)
+        if ext in ('.js', '.html'):
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+        else:
+            self.send_header('Cache-Control', 'public, max-age=3600')
         self.end_headers()
         self.wfile.write(data)
 
@@ -867,7 +1164,7 @@ if __name__ == '__main__':
 
     print(f"""
 ╔══════════════════════════════════════════════╗
-║         Supplentia v2.0  –  avvio          ║
+║         Supplentia  –  avvio          ║
 ║  Database : {DB_PATH[-35:]:35s}  ║
 ║  Frontend : http://localhost:{porta:<5d}             ║
 ╚══════════════════════════════════════════════╝

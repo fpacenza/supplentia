@@ -1,4 +1,4 @@
-/* Supplentia v2 – Assenze */
+/* Supplentia – Assenze */
 
 let _docentiCache = [];
 

@@ -1,5 +1,5 @@
 """
-Supplentia · API Importazione Orario
+SubstManager · API Importazione Orario
 Supporta CSV generico e formato Argo/Axios.
 
 Formato CSV atteso (separatore ; o ,):
