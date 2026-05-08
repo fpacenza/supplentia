@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supplentia – Accesso</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg); }
+    .login-card {
+      width: 100%; max-width: 380px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 36px 32px 32px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.35);
+    }
+    .login-logo {
+      text-align: center; margin-bottom: 28px;
+    }
+    .login-logo .logo-mark {
+      font-size: 2.2rem; line-height:1;
+      background: linear-gradient(135deg, var(--accent), var(--teal));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .login-logo .app-name {
+      font-size: 1.15rem; font-weight: 700;
+      color: var(--text); margin-top: 6px; letter-spacing: -.01em;
+    }
+    .login-logo .school-name {
+      font-size: .78rem; color: var(--text3); margin-top: 3px;
+    }
+    .login-error {
+      background: rgba(229,83,75,.12);
+      border: 1px solid rgba(229,83,75,.3);
+      color: var(--red);
+      border-radius: 7px;
+      padding: 9px 13px;
+      font-size: .82rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .login-card .form-label { font-size: .8rem; }
+    .login-card .form-input {
+      width: 100%; box-sizing: border-box;
+      background: var(--bg3);
+      font-size: .92rem;
+    }
+    .login-card .form-input:focus { border-color: var(--accent); }
+    .btn-login {
+      width: 100%; margin-top: 20px;
+      padding: 11px;
+      font-size: .95rem; font-weight: 600;
+      background: linear-gradient(135deg, var(--accent), #3a7bd5);
+      color: #fff; border: none; border-radius: 8px;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .btn-login:hover { opacity: .9; }
+    .btn-login:disabled { opacity: .5; cursor:not-allowed; }
+    .login-footer {
+      text-align: center; margin-top: 18px;
+      font-size: .73rem; color: var(--text3);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-mark">⇄</div>
+      <div class="app-name">Supplentia</div>
+      <div class="school-name" id="school-name">Gestione Sostituzioni</div>
+    </div>
+
+    <div class="login-error" id="login-error"></div>
+
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">Username</label>
+      <input type="text" id="username" class="form-input" placeholder="username"
+             autocomplete="username" autofocus>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">Password</label>
+      <input type="password" id="password" class="form-input" placeholder="••••••••"
+             autocomplete="current-password">
+    </div>
+
+    <button class="btn-login" id="btn-login" onclick="doLogin()">Accedi</button>
+
+    <div class="login-footer">Supplentia &middot; uso interno</div>
+  </div>
+
+  <script>
+    // Carica nome scuola dal config
+    fetch('/api/config/scuola')
+      .then(r => r.json())
+      .then(d => {
+        if (d.nome) document.getElementById('school-name').textContent = d.nome;
+      }).catch(() => {});
+
+    // Enter nei campi
+    ['username','password'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') doLogin();
+      });
+    });
+
+    async function doLogin() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const errEl    = document.getElementById('login-error');
+      const btn      = document.getElementById('btn-login');
+
+      errEl.style.display = 'none';
+      if (!username || !password) {
+        errEl.textContent = 'Inserisci username e password.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Accesso…';
+
+      try {
+        const resp = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          // Salva token in localStorage come fallback (il cookie HttpOnly è il principale)
+          if (data.token) localStorage.setItem('sm_token', data.token);
+          window.location.href = '/';
+        } else {
+          errEl.textContent = data.errore || 'Credenziali non valide.';
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Accedi';
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
+        }
+      } catch(e) {
+        errEl.textContent = 'Errore di connessione al server.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Accedi';
+      }
+    }
+  </script>
+</body>
+</html>
